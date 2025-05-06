@@ -32,22 +32,26 @@ state = Act.none
 
 class Thread(QtCore.QThread):
     signal_err = QtCore.pyqtSignal(str)
+    signal_finish = QtCore.pyqtSlot()
+    signal_progressbar = QtCore.pyqtSignal(int)
+
     def __init__(self, parent=None):
-        self.state = Act.none
         super().__init__(parent)
+        self.thread_state = Act.none
         self.from_dir: str = ""
         self.to_dir: str = ""
-        self.signal_finish = QtCore.pyqtSlot()
-        self.signal_progressbar = QtCore.pyqtSignal(int)
 
     def run(self):
-        match self.state:
+        match self.thread_state:
             case Act.copy:
                 try:
-                    fresh.copy_mixed(self.from_dir, self.to_dir)
-                    self.signal_finish.emit()
+                    fresh.copy_mixed(self.from_dir, self.to_dir, Thread.signal_progressbar)
+                    # self.signal_finish.emit()
+                    pass
                 except Exception as e:
                     self.signal_err.emit(str(e))
+            case Act.none:
+                print("None")
 
 
 class MyLineEdit(QLineEdit):
@@ -184,7 +188,7 @@ class MainWindow(QMainWindow):
         self.yandex_menu_action.triggered.connect(self.slot_yandex_menu_action)
         self.duplicate_menu_action.triggered.connect(self.slot_duplicate_menu_action)
         self.thread.signal_err.connect(lambda err: self.display_err(err))
-        # self.thread.signal_progressbar.connect(lambda value: self.set_progressbar(value))
+        self.thread.signal_progressbar.connect(lambda value: self.set_progressbar(value))
 
         self.widget_center = QWidget()
         self.setWindowTitle("Менеджер")
@@ -269,6 +273,7 @@ class MainWindow(QMainWindow):
     def button_clicked(self):
         self.thread.from_dir = path_from
         self.thread.to_dir = path_to
+        self.thread.thread_state = state
         self.thread.start()
 
 
