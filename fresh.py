@@ -90,14 +90,15 @@ def get_parent_dir(file: nt.DirEntry):
         return ''
 
 
-def copy_files(files: list, dst: str, is_message=True):
-
-    if is_message:
-        print(f"выполняется копирование аудиофайлов в '{dst}' ждите...")
-    for file in files:
+def copy_files(files: list, dst: str, signal_pb):
+    count = len(files)
+    percent = count // 100
+    c = 1
+    for index, file in enumerate(files):
         shutil.copy2(file.path, dst)
-    if is_message:
-        print(f"копирование аудиофайлов в: '{dst}' завершено.\n")
+        if percent * c > index:
+            c += 1
+            signal_pb.emit(c)
 
 
 def move():
@@ -115,13 +116,13 @@ def sort_key(file: nt.DirEntry):
     return int(tp[0])
 
 
-def copy_mixed():
-    files = get_audiofile_from_dir(path_from_dir)
+def copy_mixed(path_from, path_to, signal_pb):
+    files = get_audiofile_from_dir(path_from)
     indexes = get_random_index(files)
     rename_audio_files(files, indexes)
-    files = get_audiofile_from_dir(path_from_dir)
+    files = get_audiofile_from_dir(path_from)
     files = sorted(files, key=sort_key)
-    copy_files(files, path_to_dir)
+    copy_files(files, path_to, signal_pb)
 
 
 # def display_progressbar(count: int, length: int):

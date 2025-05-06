@@ -7,6 +7,9 @@ from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QApplication, QLineEdit, QLabel, QMenu, QMainWindow, QPushButton, QVBoxLayout, QFormLayout, \
     QWidget, QProgressBar
 
+import fresh
+from fresh import copy_mixed
+
 
 class Act(Enum):
     copy = 1
@@ -25,6 +28,26 @@ path_from: str = ""
 path_to: str = ""
 
 state = Act.none
+
+
+class Thread(QtCore.QThread):
+    signal_err = QtCore.pyqtSignal(str)
+    def __init__(self, parent=None):
+        self.state = Act.none
+        super().__init__(parent)
+        self.from_dir: str = ""
+        self.to_dir: str = ""
+        self.signal_finish = QtCore.pyqtSlot()
+        self.signal_progressbar = QtCore.pyqtSignal(int)
+
+    def run(self):
+        match self.state:
+            case Act.copy:
+                try:
+                    fresh.copy_mixed(self.from_dir, self.to_dir)
+                    self.signal_finish.emit()
+                except Exception as e:
+                    self.signal_err.emit(str(e))
 
 
 class MyLineEdit(QLineEdit):
@@ -133,6 +156,8 @@ def set_state(new_state: Act):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.thread = Thread()
+
         self.menu = self.menuBar()
         self.file_menu = QMenu("Файлы")
         self.menu.addMenu(self.file_menu)
@@ -158,6 +183,8 @@ class MainWindow(QMainWindow):
         self.change_menu_action.triggered.connect(self.slot_change_menu_action)
         self.yandex_menu_action.triggered.connect(self.slot_yandex_menu_action)
         self.duplicate_menu_action.triggered.connect(self.slot_duplicate_menu_action)
+        self.thread.signal_err.connect(lambda err: self.display_err(err))
+        # self.thread.signal_progressbar.connect(lambda value: self.set_progressbar(value))
 
         self.widget_center = QWidget()
         self.setWindowTitle("Менеджер")
@@ -170,6 +197,7 @@ class MainWindow(QMainWindow):
         self.progressbar = QProgressBar()
         self.progressbar.setOrientation(Qt.Orientation.Horizontal)
         self.button_start = QPushButton("пуск")
+        self.button_start.clicked.connect(self.button_clicked)
         self.label_error = QLabel("err")
         self.v_layout_box = QVBoxLayout()
         self.form_layout_from = QFormLayout()
@@ -228,6 +256,20 @@ class MainWindow(QMainWindow):
         clear_labels(self.label_message, self.label_path_to, self.label_path_from, self.label_error)
         self.label_message.setText(mess[0])
         set_state(Act.duplicate)
+
+    @QtCore.pyqtSlot()
+    def display_err(self, err):
+        self.label_error.setText(err)
+
+    @QtCore.pyqtSlot()
+    def set_progressbar(self, value: int):
+        self.progressbar.setValue(value=value)
+
+    @QtCore.pyqtSlot()
+    def button_clicked(self):
+        self.thread.from_dir = path_from
+        self.thread.to_dir = path_to
+        self.thread.start()
 
 
 if __name__ == "__main__":
