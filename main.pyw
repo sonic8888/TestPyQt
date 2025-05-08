@@ -21,19 +21,21 @@ class Act(Enum):
     none = 7
 
 
+i = 1
 mess = ("укажите путь к папке с аудиофайлами:", "укажите путь к месту куда нужно скопировать  аудиофайлы:"
         , "укажите путь к месту куда нужно переместить  аудиофайлы:", "такого пути не существует, укажите другой путь")
-path_from: str = ""
+path_from: str = r"D:\music\path_from"
 
-path_to: str = ""
+path_to: str = r"D:\music\path_to"
 
-state = Act.none
+state = Act.copy
 
 
 class Thread(QtCore.QThread):
     signal_err = QtCore.pyqtSignal(str)
     signal_finish = QtCore.pyqtSlot()
-    signal_progressbar = QtCore.pyqtSignal(int)
+    signal_progressbar_set_value = QtCore.pyqtSignal(int)
+    signal_progressbar_reset = QtCore.pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -45,7 +47,8 @@ class Thread(QtCore.QThread):
         match self.thread_state:
             case Act.copy:
                 try:
-                    fresh.copy_mixed(self.from_dir, self.to_dir, Thread.signal_progressbar)
+                    fresh.copy_mixed(self.from_dir, self.to_dir, self.signal_progressbar_set_value,
+                                     self.signal_progressbar_reset)
                     # self.signal_finish.emit()
                     pass
                 except Exception as e:
@@ -188,7 +191,8 @@ class MainWindow(QMainWindow):
         self.yandex_menu_action.triggered.connect(self.slot_yandex_menu_action)
         self.duplicate_menu_action.triggered.connect(self.slot_duplicate_menu_action)
         self.thread.signal_err.connect(lambda err: self.display_err(err))
-        self.thread.signal_progressbar.connect(lambda value: self.set_progressbar(value))
+        self.thread.signal_progressbar_set_value.connect(lambda value: self.set_progressbar(value))
+        self.thread.signal_progressbar_reset.connect(self.reset_progressbar)
 
         self.widget_center = QWidget()
         self.setWindowTitle("Менеджер")
@@ -267,7 +271,7 @@ class MainWindow(QMainWindow):
 
     @QtCore.pyqtSlot()
     def set_progressbar(self, value: int):
-        self.progressbar.setValue(value=value)
+        self.progressbar.setValue(value)
 
     @QtCore.pyqtSlot()
     def button_clicked(self):
@@ -275,6 +279,10 @@ class MainWindow(QMainWindow):
         self.thread.to_dir = path_to
         self.thread.thread_state = state
         self.thread.start()
+
+    @QtCore.pyqtSlot()
+    def reset_progressbar(self):
+        self.progressbar.reset()
 
 
 if __name__ == "__main__":

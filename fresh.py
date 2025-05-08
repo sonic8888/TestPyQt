@@ -5,11 +5,11 @@ import re
 import shutil
 import tempfile
 from pathlib import Path
-from tkinter import *
-from tkinter import ttk
+from PyQt6 import QtCore
+from supportive import progress_value
 
-path_to_dir: str = ''
-path_from_dir: str = ''
+# path_to_dir: str = ''
+# path_from_dir: str = ''
 regex_pattern: str = r'^\d*\W*'
 extensions = ('.mp3', '.wav', '.aif', '.mid', '.flac')
 rp = re.compile(regex_pattern, re.I)
@@ -62,14 +62,14 @@ def get_audiofile_from_dir(path_dir: str):
     return files
 
 
-def rename_audio_files(files: list, indexes: list):
+def rename_audio_files(files: list, indexes: list, from_dir: str):
     if files and indexes and len(files) == len(indexes):
         for i in range(len(files)):
             old_name_files = files[i]
             if is_math_type(old_name_files):
                 new_name = str(indexes[i]) + '. ' + clear_name_file(old_name_files)
                 try:
-                    os.rename(old_name_files.path, os.path.join(path_from_dir, new_name))
+                    os.rename(old_name_files.path, os.path.join(from_dir, new_name))
                 except FileNotFoundError:
                     print("Файл не найден")
                 except PermissionError:
@@ -90,24 +90,24 @@ def get_parent_dir(file: nt.DirEntry):
         return ''
 
 
-def copy_files(files: list, dst: str, signal_pb):
+def copy_files(files: list, dst: str, signal_pb_set_value: QtCore.pyqtSignal, signal_pb_reset: QtCore.pyqtSignal):
     count = len(files)
-    percent = count // 100
-    c = 1
+    fun_pb = progress_value(count)
     for index, file in enumerate(files):
         shutil.copy2(file.path, dst)
-        if percent * c > index:
-            c += 1
-            signal_pb.emit(c)
+        is_v, val = fun_pb()
+        if is_v:
+            signal_pb_set_value.emit(val)
+    signal_pb_reset.emit()
 
 
-def move():
-    files = get_audiofile_from_dir(path_from_dir)
-    indexes = get_random_index(files)
-    rename_audio_files(files, indexes)
-    files = get_audiofile_from_dir(path_from_dir)
-    files = sorted(files, key=sort_key)
-    move_files(files, path_to_dir)
+# def move():
+#     files = get_audiofile_from_dir(path_from_dir)
+#     indexes = get_random_index(files)
+#     rename_audio_files(files, indexes)
+#     files = get_audiofile_from_dir(path_from_dir)
+#     files = sorted(files, key=sort_key)
+#     move_files(files, path_to_dir)
 
 
 def sort_key(file: nt.DirEntry):
@@ -116,13 +116,13 @@ def sort_key(file: nt.DirEntry):
     return int(tp[0])
 
 
-def copy_mixed(path_from, path_to, signal_pb):
+def copy_mixed(path_from, path_to, signal_pb_set_value: QtCore.pyqtSignal, signal_pb_reset: QtCore.pyqtSignal):
     files = get_audiofile_from_dir(path_from)
     indexes = get_random_index(files)
-    rename_audio_files(files, indexes)
+    rename_audio_files(files, indexes, path_from)
     files = get_audiofile_from_dir(path_from)
     files = sorted(files, key=sort_key)
-    copy_files(files, path_to, signal_pb)
+    copy_files(files, path_to, signal_pb_set_value, signal_pb_reset)
 
 
 # def display_progressbar(count: int, length: int):
@@ -133,89 +133,90 @@ def copy_mixed(path_from, path_to, signal_pb):
 #         m.progress_value += 1
 
 
-def main():
-    global path_from_dir, path_to_dir
-    path_from_dir = input(messages[1])
-    if path_from_dir == 'e':
-        return
-    if os.path.exists(path_from_dir):
-        path_from_dir = os.path.abspath(path_from_dir)
-    else:
-        print(messages[9])
-        return
-    while True:
-
-        s = (messages[3], messages[4], messages[5], messages[6], messages[8])
-        message = "\n".join(s)
-        act = input(message + '\n:')
-        match act:
-            case 'c':
-                try:
-                    path_to_dir = input(messages[7])
-                    if os.path.exists(path_to_dir):
-                        path_to_dir = os.path.abspath(path_to_dir)
-                    else:
-                        print(messages[9])
-                        continue
-                    files = get_audiofile_from_dir(path_from_dir)
-                    indexes = get_random_index(files)
-                    rename_audio_files(files, indexes)
-                    files = get_audiofile_from_dir(path_from_dir)
-                    files = sorted(files, key=sort_key)
-                    copy_files(files, path_to_dir)
-                except Exception as e:
-                    print(e)
-                    break
-            case 'm':
-                try:
-                    path_to_dir = input(messages[7])
-                    if os.path.exists(path_to_dir):
-                        path_to_dir = os.path.abspath(path_to_dir)
-                    else:
-                        print(messages[9])
-                        continue
-                    files = get_audiofile_from_dir(path_from_dir)
-                    indexes = get_random_index(files)
-                    rename_audio_files(files, indexes)
-                    files = get_audiofile_from_dir(path_from_dir)
-                    files = sorted(files, key=sort_key)
-                    move_files(files, path_to_dir)
-                except Exception as e:
-                    print(e)
-                    break
-                print(f" аудиофайлы находящиеся в {path_from_dir} перемещены в {path_to_dir} c перемешиванием.\n")
-
-            case 'r':
-                try:
-                    files = get_audiofile_from_dir(path_from_dir)
-                    indexes = get_random_index(files)
-                    rename_audio_files(files, indexes)
-                except Exception as e:
-                    print(e)
-                    break
-                print(f'аудиофайлы находящиеся в: {path_from_dir} переименованы.\n')
-            case 'ch':
-                try:
-                    files = get_audiofile_from_dir(path_from_dir)
-                    indexes = get_random_index(files)
-                    rename_audio_files(files, indexes)
-                    files = get_audiofile_from_dir(path_from_dir)
-                    print("ждите...")
-                    path_to_dir = tempfile.mkdtemp()
-                    move_files(files, path_to_dir)
-                    files = get_audiofile_from_dir(path_to_dir)
-                    files = sorted(files, key=sort_key)
-                    move_files(files, path_from_dir)
-                    print(f"аудиофайлы находящиеся в '{path_from_dir}' перемешаны.\n")
-                except Exception as e:
-                    print(e)
-                finally:
-                    shutil.rmtree(path_to_dir)
-            case 'e':
-                break
-            case _:
-                continue
+# def main():
+#     global path_from_dir, path_to_dir
+#     path_from_dir = input(messages[1])
+#     if path_from_dir == 'e':
+#         return
+#     if os.path.exists(path_from_dir):
+#         path_from_dir = os.path.abspath(path_from_dir)
+#     else:
+#         print(messages[9])
+#         return
+#     while True:
+#
+#         s = (messages[3], messages[4], messages[5], messages[6], messages[8])
+#         message = "\n".join(s)
+#         act = input(message + '\n:')
+#         match act:
+#             case 'c':
+#                 try:
+#                     path_to_dir = input(messages[7])
+#                     if os.path.exists(path_to_dir):
+#                         path_to_dir = os.path.abspath(path_to_dir)
+#                     else:
+#                         print(messages[9])
+#                         continue
+#                     files = get_audiofile_from_dir(path_from_dir)
+#                     indexes = get_random_index(files)
+#                     rename_audio_files(files, indexes)
+#                     files = get_audiofile_from_dir(path_from_dir)
+#                     files = sorted(files, key=sort_key)
+#                     copy_files(files, path_to_dir)
+#                 except Exception as e:
+#                     print(e)
+#                     break
+#             case 'm':
+#                 try:
+#                     path_to_dir = input(messages[7])
+#                     if os.path.exists(path_to_dir):
+#                         path_to_dir = os.path.abspath(path_to_dir)
+#                     else:
+#                         print(messages[9])
+#                         continue
+#                     files = get_audiofile_from_dir(path_from_dir)
+#                     indexes = get_random_index(files)
+#                     rename_audio_files(files, indexes)
+#                     files = get_audiofile_from_dir(path_from_dir)
+#                     files = sorted(files, key=sort_key)
+#                     move_files(files, path_to_dir)
+#                 except Exception as e:
+#                     print(e)
+#                     break
+#                 print(f" аудиофайлы находящиеся в {path_from_dir} перемещены в {path_to_dir} c перемешиванием.\n")
+#
+#             case 'r':
+#                 try:
+#                     files = get_audiofile_from_dir(path_from_dir)
+#                     indexes = get_random_index(files)
+#                     rename_audio_files(files, indexes)
+#                 except Exception as e:
+#                     print(e)
+#                     break
+#                 print(f'аудиофайлы находящиеся в: {path_from_dir} переименованы.\n')
+#             case 'ch':
+#                 try:
+#                     files = get_audiofile_from_dir(path_from_dir)
+#                     indexes = get_random_index(files)
+#                     rename_audio_files(files, indexes)
+#                     files = get_audiofile_from_dir(path_from_dir)
+#                     print("ждите...")
+#                     path_to_dir = tempfile.mkdtemp()
+#                     move_files(files, path_to_dir)
+#                     files = get_audiofile_from_dir(path_to_dir)
+#                     files = sorted(files, key=sort_key)
+#                     move_files(files, path_from_dir)
+#                     print(f"аудиофайлы находящиеся в '{path_from_dir}' перемешаны.\n")
+#                 except Exception as e:
+#                     print(e)
+#                 finally:
+#                     shutil.rmtree(path_to_dir)
+#             case 'e':
+#                 break
+#             case _:
+#                 continue
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    pass
