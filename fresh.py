@@ -68,12 +68,7 @@ def rename_audio_files(files: list, indexes: list, from_dir: str):
             old_name_files = files[i]
             if is_math_type(old_name_files):
                 new_name = str(indexes[i]) + '. ' + clear_name_file(old_name_files)
-                try:
-                    os.rename(old_name_files.path, os.path.join(from_dir, new_name))
-                except FileNotFoundError:
-                    print("Файл не найден")
-                except PermissionError:
-                    print("Нет доступа для переименования файла")
+                os.rename(old_name_files.path, os.path.join(from_dir, new_name))
 
 
 def move_files(files: list, dst: str, is_delete_parent_dir=False, parent_dir=''):
@@ -90,7 +85,7 @@ def get_parent_dir(file: nt.DirEntry):
         return ''
 
 
-def copy_files(files: list, dst: str, signal_pb_set_value: QtCore.pyqtSignal, signal_pb_reset: QtCore.pyqtSignal):
+def copy_files(files: list, dst: str, signal_pb_set_value: QtCore.pyqtSignal):
     count = len(files)
     fun_pb = progress_value(count)
     for index, file in enumerate(files):
@@ -98,7 +93,7 @@ def copy_files(files: list, dst: str, signal_pb_set_value: QtCore.pyqtSignal, si
         is_v, val = fun_pb()
         if is_v:
             signal_pb_set_value.emit(val)
-    signal_pb_reset.emit()
+
 
 
 # def move():
@@ -116,13 +111,13 @@ def sort_key(file: nt.DirEntry):
     return int(tp[0])
 
 
-def copy_mixed(path_from, path_to, signal_pb_set_value: QtCore.pyqtSignal, signal_pb_reset: QtCore.pyqtSignal):
+def copy_mixed(path_from, path_to, signal_pb_set_value: QtCore.pyqtSignal):
     files = get_audiofile_from_dir(path_from)
     indexes = get_random_index(files)
     rename_audio_files(files, indexes, path_from)
     files = get_audiofile_from_dir(path_from)
     files = sorted(files, key=sort_key)
-    copy_files(files, path_to, signal_pb_set_value, signal_pb_reset)
+    copy_files(files, path_to, signal_pb_set_value)
 
 
 # def display_progressbar(count: int, length: int):

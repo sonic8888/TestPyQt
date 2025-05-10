@@ -23,19 +23,18 @@ class Act(Enum):
 
 i = 1
 mess = ("укажите путь к папке с аудиофайлами:", "укажите путь к месту куда нужно скопировать  аудиофайлы:"
-        , "укажите путь к месту куда нужно переместить  аудиофайлы:", "такого пути не существует, укажите другой путь")
+        , "укажите путь к месту куда нужно переместить  аудиофайлы:", "такого пути не существует, укажите другой путь",
+        "все действия выполнены успешно")
 path_from: str = r"D:\music\path_from"
 
 path_to: str = r"D:\music\path_to"
 
-state = Act.copy
+state = Act.none
 
 
 class Thread(QtCore.QThread):
     signal_err = QtCore.pyqtSignal(str)
-    signal_finish = QtCore.pyqtSlot()
     signal_progressbar_set_value = QtCore.pyqtSignal(int)
-    signal_progressbar_reset = QtCore.pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -47,10 +46,11 @@ class Thread(QtCore.QThread):
         match self.thread_state:
             case Act.copy:
                 try:
-                    fresh.copy_mixed(self.from_dir, self.to_dir, self.signal_progressbar_set_value,
-                                     self.signal_progressbar_reset)
-                    # self.signal_finish.emit()
-                    pass
+                    fresh.copy_mixed(self.from_dir, self.to_dir, self.signal_progressbar_set_value)
+                except PermissionError as p:
+                    self.signal_err.emit(str(p))
+                except FileNotFoundError as f:
+                    self.signal_err.emit(str(f))
                 except Exception as e:
                     self.signal_err.emit(str(e))
             case Act.none:
@@ -190,9 +190,11 @@ class MainWindow(QMainWindow):
         self.change_menu_action.triggered.connect(self.slot_change_menu_action)
         self.yandex_menu_action.triggered.connect(self.slot_yandex_menu_action)
         self.duplicate_menu_action.triggered.connect(self.slot_duplicate_menu_action)
+        self.progressbar = QProgressBar()
         self.thread.signal_err.connect(lambda err: self.display_err(err))
-        self.thread.signal_progressbar_set_value.connect(lambda value: self.set_progressbar(value))
-        self.thread.signal_progressbar_reset.connect(self.reset_progressbar)
+        self.thread.signal_progressbar_set_value.connect(lambda value: self.progressbar.setValue(value))
+
+        self.thread.finished.connect(self.thread_finish)
 
         self.widget_center = QWidget()
         self.setWindowTitle("Менеджер")
@@ -270,19 +272,15 @@ class MainWindow(QMainWindow):
         self.label_error.setText(err)
 
     @QtCore.pyqtSlot()
-    def set_progressbar(self, value: int):
-        self.progressbar.setValue(value)
-
-    @QtCore.pyqtSlot()
     def button_clicked(self):
         self.thread.from_dir = path_from
         self.thread.to_dir = path_to
         self.thread.thread_state = state
         self.thread.start()
 
-    @QtCore.pyqtSlot()
-    def reset_progressbar(self):
+    def thread_finish(self):
         self.progressbar.reset()
+        label_set_text(self.label_message, mess[4])
 
 
 if __name__ == "__main__":
