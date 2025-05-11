@@ -62,6 +62,12 @@ def get_audiofile_from_dir(path_dir: str):
     return files
 
 
+def rename(path_from):
+    files = get_audiofile_from_dir(path_from)
+    indexes = get_random_index(files)
+    rename_audio_files(files, indexes, path_from)
+
+
 def rename_audio_files(files: list, indexes: list, from_dir: str):
     if files and indexes and len(files) == len(indexes):
         for i in range(len(files)):
@@ -71,7 +77,21 @@ def rename_audio_files(files: list, indexes: list, from_dir: str):
                 os.rename(old_name_files.path, os.path.join(from_dir, new_name))
 
 
-def move_files(files: list, dst: str, is_delete_parent_dir=False, parent_dir=''):
+def move_files(files: list, dst: str, signal_pb_set_value: QtCore.pyqtSignal, is_delete_parent_dir=False,
+               parent_dir=''):
+    count = len(files)
+    fun_pb = progress_value(count)
+    for index, file in enumerate(files):
+        shutil.move(file.path, dst)
+        is_v, val = fun_pb()
+        if is_v:
+            signal_pb_set_value.emit(val)
+    if is_delete_parent_dir and parent_dir:
+        shutil.rmtree(parent_dir, ignore_errors=True)
+
+
+def move_files_to(files: list, dst: str, is_delete_parent_dir=False,
+                  parent_dir=''):
     for file in files:
         shutil.move(file.path, dst)
     if is_delete_parent_dir and parent_dir:
@@ -95,14 +115,13 @@ def copy_files(files: list, dst: str, signal_pb_set_value: QtCore.pyqtSignal):
             signal_pb_set_value.emit(val)
 
 
-
-# def move():
-#     files = get_audiofile_from_dir(path_from_dir)
-#     indexes = get_random_index(files)
-#     rename_audio_files(files, indexes)
-#     files = get_audiofile_from_dir(path_from_dir)
-#     files = sorted(files, key=sort_key)
-#     move_files(files, path_to_dir)
+def move(path_from, path_to, signal_pb_set_value: QtCore.pyqtSignal):
+    files = get_audiofile_from_dir(path_from)
+    indexes = get_random_index(files)
+    rename_audio_files(files, indexes, path_from)
+    files = get_audiofile_from_dir(path_from)
+    files = sorted(files, key=sort_key)
+    move_files(files, path_to, signal_pb_set_value)
 
 
 def sort_key(file: nt.DirEntry):
@@ -118,6 +137,17 @@ def copy_mixed(path_from, path_to, signal_pb_set_value: QtCore.pyqtSignal):
     files = get_audiofile_from_dir(path_from)
     files = sorted(files, key=sort_key)
     copy_files(files, path_to, signal_pb_set_value)
+
+
+def change(path_from, temp_path_to):
+    files = get_audiofile_from_dir(path_from)
+    indexes = get_random_index(files)
+    rename_audio_files(files, indexes, path_from)
+    files = get_audiofile_from_dir(path_from)
+    move_files_to(files, temp_path_to)
+    files = get_audiofile_from_dir(temp_path_to)
+    files = sorted(files, key=sort_key)
+    move_files_to(files, path_from)
 
 
 # def display_progressbar(count: int, length: int):

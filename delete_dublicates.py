@@ -76,6 +76,12 @@ def remove_duplicates(duplicates: []):
         except OSError:
             print(Fore.RED + f"не удалось удалить файл:{_file_path}")
 
+def remove():
+    _files = create_clean_name_list(path_directory)
+    _duplicates = search_duplicates(_files)
+    _list_duplicates = dictionary_to_list(_duplicates)
+    remove_duplicates(_list_duplicates)
+
 
 def main():
     global  path_directory

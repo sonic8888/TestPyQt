@@ -50,13 +50,11 @@ def get_path_music(db_name):
 def copy_files():
     global base_path, path_db
     base_path = get_base_path()
-    # print(base_path)
     if base_path == -1:
         exit()
     path_db = get_path_db()
     if path_db == -1:
         exit()
-    # print(path_db)
     path_folder_source = get_path_music(path_db)
     con = sqlite3.connect(path_db)
 
